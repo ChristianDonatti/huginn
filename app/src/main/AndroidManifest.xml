@@ -4,6 +4,18 @@
     <!-- Shows whether the Thor is on Wi-Fi in the status bar of the bottom screen. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!--
+        Reads the ROM folders the way ES-DE does: All files access on Android 11 and later,
+        the storage permission before that.
+    -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- A launcher has to see every app, including emulators without a launcher icon. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
     <!-- A launcher has to see the apps it lists. -->
     <queries>
         <intent>
@@ -61,5 +73,16 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- Hands ROM files to emulators that take a content URI (ES-DE's %ROMPROVIDER%). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

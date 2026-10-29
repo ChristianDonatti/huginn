@@ -12,7 +12,14 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.widget.Toast
 import androidx.annotation.StringRes
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -66,6 +73,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.christiandonatti.huginn.AppEntry
 import io.github.christiandonatti.huginn.AppRepository
+import io.github.christiandonatti.huginn.Library
+import io.github.christiandonatti.huginn.Prefs
+import io.github.christiandonatti.huginn.Rules
 import io.github.christiandonatti.huginn.BuildConfig
 import io.github.christiandonatti.huginn.DualScreen
 import io.github.christiandonatti.huginn.R
@@ -74,9 +84,7 @@ import io.github.christiandonatti.huginn.shared.formatMinutes
 import io.github.christiandonatti.huginn.ui.theme.HColors
 import kotlinx.coroutines.delay
 
-private const val REPO_URL = "https://github.com/ChristianDonatti/huginn"
-
-/** Phase 0 panel on the bottom screen: shortcuts, every app, and what Huginn sees of the screens. */
+/** The panel on the bottom screen: consoles, every app, settings, and what Huginn sees of the screens. */
 @Composable
 fun BottomScreen(activity: Activity) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -91,8 +99,9 @@ fun BottomScreen(activity: Activity) {
         StatusRow()
         Segmented(
             labels = listOf(
-                stringResource(R.string.tab_shortcuts),
+                stringResource(R.string.tab_consoles),
                 stringResource(R.string.tab_apps),
+                stringResource(R.string.tab_settings),
                 stringResource(R.string.tab_screens),
             ),
             selected = tab,
@@ -101,8 +110,9 @@ fun BottomScreen(activity: Activity) {
         )
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (tab) {
-                0 -> ShortcutsTab(activity)
+                0 -> ConsolesTab()
                 1 -> AppsTab(activity)
+                2 -> SettingsTab(activity)
                 else -> ScreensTab(activity)
             }
         }
@@ -145,57 +155,21 @@ private fun StatusRow() {
     }
 }
 
-private class Shortcut(
-    @StringRes val title: Int,
-    @StringRes val subtitle: Int,
-    val icon: ImageVector,
-    val action: () -> Unit,
-)
-
-@Composable
-private fun ShortcutsTab(activity: Activity) {
-    val here = DualScreen.currentDisplayId(activity)
-    val shortcuts = listOf(
-        Shortcut(R.string.sc_android_settings, R.string.sc_android_settings_desc, Icons.Filled.Settings) {
-            DualScreen.open(activity, Intent(Settings.ACTION_SETTINGS), here)
-        },
-        Shortcut(R.string.sc_default_launcher, R.string.sc_default_launcher_desc, Icons.Filled.Home) {
-            DualScreen.open(activity, Intent(Settings.ACTION_HOME_SETTINGS), here)
-        },
-        Shortcut(R.string.sc_top, R.string.sc_top_desc, Icons.Filled.KeyboardArrowUp) {
-            DualScreen.showTop(activity)
-        },
-        Shortcut(R.string.sc_reload, R.string.sc_reload_desc, Icons.Filled.Refresh) {
-            AppRepository.refresh(activity, force = true)
-        },
-        Shortcut(R.string.sc_repo, R.string.sc_repo_desc, Icons.Filled.Info) {
-            DualScreen.open(activity, Intent(Intent.ACTION_VIEW, Uri.parse(REPO_URL)), here)
-        },
-    )
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        items(shortcuts) { s ->
-            ActionTile(stringResource(s.title), stringResource(s.subtitle), s.icon, s.action)
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Text(
-                stringResource(R.string.version_line, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
-                style = MaterialTheme.typography.bodySmall,
-                color = HColors.TextMuted,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-    }
-}
-
 @Composable
 private fun AppsTab(activity: Activity) {
     val context = LocalContext.current
     val apps = AppRepository.apps
+    val emulators = remember(AppRepository.version) { runCatching { Rules.emulatorPackages(context) }.getOrDefault(emptySet()) }
     var otherScreen by rememberSaveable { mutableStateOf(false) }
+    fun toggleGame(app: AppEntry) {
+        val nowGame = !Library.isGameApp(app, emulators)
+        Prefs.setAppIsGame(app.packageName, nowGame)
+        Toast.makeText(
+            context,
+            context.getString(if (nowGame) R.string.marked_game else R.string.unmarked_game, app.label),
+            Toast.LENGTH_SHORT,
+        ).show()
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.open_in), style = MaterialTheme.typography.labelMedium, color = HColors.TextMuted)
@@ -207,6 +181,7 @@ private fun AppsTab(activity: Activity) {
                 modifier = Modifier.weight(1f),
             )
         }
+        Text(stringResource(R.string.hint_mark_game), style = MaterialTheme.typography.bodySmall, color = HColors.TextMuted)
         LazyVerticalGrid(
             columns = GridCells.Adaptive(80.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -214,7 +189,8 @@ private fun AppsTab(activity: Activity) {
             modifier = Modifier.weight(1f),
         ) {
             items(apps, key = { it.component.flattenToString() }) { app ->
-                AppGridItem(app) {
+                val isGame = Library.isGameApp(app, emulators)
+                AppGridItem(app, isGame, onLongClick = { toggleGame(app) }) {
                     val target = if (otherScreen) DualScreen.otherDisplayId(activity) else DualScreen.currentDisplayId(activity)
                     if (!DualScreen.launch(context, app, target)) {
                         Toast.makeText(context, context.getString(R.string.launch_failed, app.label), Toast.LENGTH_SHORT).show()
@@ -225,8 +201,9 @@ private fun AppsTab(activity: Activity) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AppGridItem(app: AppEntry, onClick: () -> Unit) {
+private fun AppGridItem(app: AppEntry, isGame: Boolean, onLongClick: () -> Unit, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
@@ -234,12 +211,32 @@ private fun AppGridItem(app: AppEntry, onClick: () -> Unit) {
         Modifier
             .clip(shape)
             .then(if (focused) Modifier.border(2.dp, HColors.Accent, shape) else Modifier)
-            .clickable(interactionSource = source, indication = LocalIndication.current, onClick = onClick)
+            .onPreviewKeyEvent { e ->
+                if (e.type == KeyEventType.KeyDown && e.key == Key.ButtonY) { onLongClick(); true } else false
+            }
+            .combinedClickable(
+                interactionSource = source,
+                indication = LocalIndication.current,
+                onLongClick = onLongClick,
+                onClick = onClick,
+            )
             .padding(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Image(bitmap = app.icon, contentDescription = null, modifier = Modifier.size(52.dp))
+        Box {
+            Image(bitmap = app.icon, contentDescription = null, modifier = Modifier.size(52.dp))
+            if (isGame) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(HColors.Accent)
+                        .border(2.dp, HColors.Ink, CircleShape),
+                )
+            }
+        }
         Text(
             app.label,
             style = MaterialTheme.typography.bodySmall,

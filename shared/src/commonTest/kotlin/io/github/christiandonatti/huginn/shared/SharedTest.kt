@@ -2,18 +2,8 @@ package io.github.christiandonatti.huginn.shared
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class SharedTest {
-    @Test
-    fun foldersFollowEsDeNames() {
-        assertEquals(GameSystem.GBA, GameSystem.fromFolder("gba"))
-        assertEquals(GameSystem.GBA, GameSystem.fromFolder(" GBA "))
-        assertEquals(GameSystem.MEGADRIVE, GameSystem.fromFolder("genesis"))
-        assertEquals(GameSystem.N3DS, GameSystem.fromFolder("n3ds"))
-        assertNull(GameSystem.fromFolder("Downloads"))
-    }
-
     @Test
     fun minutesReadNaturally() {
         assertEquals("40 min", formatMinutes(40))

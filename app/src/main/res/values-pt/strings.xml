@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="phase_chip">fase 0 · teste</string>
+    <string name="phase_chip">fase 1 · teste</string>
 
     <string name="open">Abrir</string>
     <string name="open_other_screen">Abrir na outra tela</string>
@@ -11,8 +11,6 @@
     <string name="no_apps">Nenhum app encontrado</string>
     <string name="single_screen">Só uma tela encontrada. O painel de baixo abre nesta mesma tela.</string>
     <string name="launch_failed">Não deu para abrir %1$s nessa tela</string>
-
-    <string name="tab_shortcuts">Atalhos</string>
     <string name="tab_apps">Apps</string>
     <string name="tab_screens">Telas</string>
 
@@ -47,4 +45,71 @@
     <string name="wifi_on">Wi-Fi</string>
     <string name="wifi_off">Sem Wi-Fi</string>
     <string name="charging">carregando</string>
+    <!-- Fase 1: jogos -->
+    <string name="filter_all">Todos</string>
+    <string name="filter_recent">Recentes</string>
+    <string name="filter_favorites">Favoritos</string>
+    <string name="filter_apps">Apps</string>
+    <string name="item_count">%1$d de %2$d</string>
+    <string name="play">Jogar</string>
+    <string name="details">Detalhes</string>
+    <string name="play_other_screen">Jogar na outra tela</string>
+    <string name="favorite_on">Favorito</string>
+    <string name="favorite_off">Favoritar</string>
+    <string name="back">Voltar</string>
+    <string name="hint_games">A joga · Y detalhes · X na outra tela · L1/R1 troca o console</string>
+    <string name="hint_page">B volta · Y favorita · X joga na outra tela · esquerda/direita no emulador troca</string>
+    <string name="android_game">Jogo Android</string>
+    <string name="no_emulator_short">Nenhum emulador instalado</string>
+    <string name="no_emulator_long">Nenhum emulador de %1$s instalado. O Huginn conhece %2$s.</string>
+    <string name="no_emulator_toast">Nenhum emulador de %1$s instalado</string>
+    <string name="play_failed">Não deu para abrir %1$s: %2$s</string>
+    <string name="last_played">jogado %1$s</string>
+    <string name="emulator_label">Emulador deste jogo</string>
+    <string name="emulator_auto">Automático (%1$s)</string>
+    <string name="scanning_line">Procurando jogos: %1$s</string>
+
+    <string name="setup_access_title">O Huginn precisa ver suas pastas de jogos</string>
+    <string name="setup_access_text">Permita o \"Acesso a todos os arquivos\" para o Huginn, como o ES-DE pede. Ele só lê as pastas que você escolher.</string>
+    <string name="setup_folder_title">Onde estão seus jogos?</string>
+    <string name="setup_folder_text">Escolha a pasta que tem uma pasta por console (gba, snes, psx…), ou deixe o Huginn procurar.</string>
+    <string name="setup_scanning_title">Procurando jogos…</string>
+    <string name="setup_empty_title">Nenhum jogo encontrado</string>
+    <string name="setup_empty_text">O Huginn procura pastas com nome de console, como gba, snes, psx ou n3ds (os mesmos nomes do ES-DE), em:\n%1$s</string>
+    <string name="allow_access">Permitir acesso</string>
+    <string name="choose_folder">Escolher pasta</string>
+    <string name="find_folders">Procurar pastas</string>
+    <string name="rescan">Escanear de novo</string>
+    <string name="add_folder">Adicionar pasta</string>
+    <string name="folder_unsupported">Essa pasta não dá para usar; escolha uma no armazenamento interno ou no cartão SD</string>
+    <plurals name="folders_found">
+        <item quantity="one">%d pasta de jogos encontrada</item>
+        <item quantity="other">%d pastas de jogos encontradas</item>
+    </plurals>
+    <string name="folders_none_found">Nenhuma pasta de jogos nova encontrada</string>
+    <plurals name="game_count">
+        <item quantity="one">%d jogo</item>
+        <item quantity="other">%d jogos</item>
+    </plurals>
+
+    <string name="tab_consoles">Consoles</string>
+    <string name="tab_settings">Ajustes</string>
+    <string name="hint_mark_game">Toque e segure (ou Y) para marcar um app como jogo; ele passa a aparecer com os jogos.</string>
+    <string name="marked_game">%1$s agora está nos jogos</string>
+    <string name="unmarked_game">%1$s saiu dos jogos</string>
+    <string name="section_folders">Pastas de jogos</string>
+    <string name="access_ok">Acesso a todos os arquivos permitido</string>
+    <string name="access_missing">Necessário para ler as pastas de jogos</string>
+    <string name="tap_to_remove">toque para remover</string>
+    <string name="tap_to_change">toque para trocar</string>
+    <string name="library_summary">%1$d jogos em %2$d consoles · escaneado %3$s</string>
+    <string name="section_emulators">Emulador por console</string>
+    <string name="emulators_hint">O Huginn escolhe um sozinho. Emuladores próprios que abrem jogos pelo seletor de arquivos do Android (Dolphin, melonDS, Azahar, DraStic…) precisam ter acesso à pasta de ROMs nos ajustes deles antes.</string>
+    <string name="emulator_none_installed">nenhum emulador instalado</string>
+    <plurals name="emulators_installed">
+        <item quantity="one">%d instalado</item>
+        <item quantity="other">%d instalados</item>
+    </plurals>
+    <string name="section_launcher">Launcher</string>
+    <string name="credits_esde">Sistemas e regras de emuladores do ES-DE (licença MIT)</string>
 </resources>

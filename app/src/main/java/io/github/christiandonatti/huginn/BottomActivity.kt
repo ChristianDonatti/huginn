@@ -15,6 +15,10 @@ class BottomActivity : ComponentActivity() {
         /** Display where a bottom panel currently exists, so the top screen does not open a second one. */
         var livesOn: Int? = null
             private set
+
+        /** Whether the panel is on screen (not covered by another app). */
+        var visible = false
+            private set
     }
 
     private var myDisplay: Int? = null
@@ -22,6 +26,7 @@ class BottomActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        Prefs.init(this)
         onBackPressedDispatcher.addCallback(this) { }
         myDisplay = DualScreen.currentDisplayId(this)
         livesOn = myDisplay
@@ -29,6 +34,16 @@ class BottomActivity : ComponentActivity() {
         setContent {
             HuginnTheme { BottomScreen(this) }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        visible = true
+    }
+
+    override fun onStop() {
+        visible = false
+        super.onStop()
     }
 
     override fun onResume() {

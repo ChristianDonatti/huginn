@@ -29,6 +29,8 @@ data class AppEntry(
     val icon: ImageBitmap,
     /** Main colour of the icon; it tints the card and the glow behind the carousel. */
     val color: Color,
+    /** Android lists it as a game; Huginn then shows it with the games unless the user unmarks it. */
+    val flaggedAsGame: Boolean = false,
 )
 
 /**
@@ -39,6 +41,9 @@ object AppRepository {
     var apps by mutableStateOf<List<AppEntry>>(emptyList())
         private set
     var loading by mutableStateOf(true)
+        private set
+    /** Goes up every time the list is rebuilt, so emulator checks can be redone. */
+    var version by mutableStateOf(0)
         private set
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -60,6 +65,8 @@ object AppRepository {
         val newSignature = found.joinToString("|") { it.activityInfo.packageName + "/" + it.activityInfo.name }
         if (!force && newSignature == signature && apps.isNotEmpty()) return@withLock
         if (force) cache.clear()
+        // Apps were installed or removed: emulators may have come or gone too.
+        Rules.invalidate()
 
         val list = found.mapNotNull { info ->
             val component = ComponentName(info.activityInfo.packageName, info.activityInfo.name)
@@ -68,6 +75,7 @@ object AppRepository {
         }.sortedBy { it.label.lowercase() }
 
         withContext(Dispatchers.Main) {
+            version++
             apps = list
             signature = newSignature
             loading = false
@@ -85,6 +93,7 @@ object AppRepository {
             component = component,
             icon = bitmap.asImageBitmap(),
             color = if (rgb != null) Color(rgb) else Color(0xFF2A7FB0),
+            flaggedAsGame = info.activityInfo.applicationInfo.isGameByAndroid(),
         )
     }
 }
