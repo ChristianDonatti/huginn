@@ -2,7 +2,7 @@
 
 Launcher de duas telas para o AYN Thor, com a cara do [Fwip](https://github.com/ChristianDonatti/fwip). O Huginn fica no Thor; o Muninn, que vem depois, leva jogos, saves e manuais entre o Thor, o celular, o PC e o NAS.
 
-> Em desenvolvimento, fase 0. Ainda não abre jogos: por enquanto lista os apps, abre cada um na tela que você escolher e mostra o que o Huginn enxerga das duas telas.
+> Em desenvolvimento, fase 1. Já acha os jogos nas suas pastas de ROMs, abre cada um no emulador certo e tem página do jogo. Capas de verdade chegam na fase 2.
 
 *A dual-screen launcher for the AYN Thor, in early development.*
 
@@ -39,6 +39,14 @@ Precisa do JDK 17 e do Android SDK.
 ```
 
 O APK sai em `app/build/outputs/apk/release/`. As versões de teste são assinadas com a chave de desenvolvimento em `keystore/`, pública de propósito para que uma versão instale por cima da outra.
+
+## Pastas de ROMs e emuladores
+
+O Huginn usa os mesmos nomes de pasta do ES-DE (`gba`, `snes`, `psx`, `n3ds`...), com alguns apelidos comuns (`3ds`, `gamecube`, `ps1`). Os comandos que abrem cada emulador vêm das regras do [ES-DE](https://es-de.org) para Android, sob licença MIT (`app/src/main/assets/esde`). Para atualizar:
+
+```
+python3 tools/import_esde.py <pasta do ES-DE>/resources/systems/android
+```
 
 ## Tecnologia
 
