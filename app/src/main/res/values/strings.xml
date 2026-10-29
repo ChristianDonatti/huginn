@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Huginn</string>
+    <string name="phase_chip">phase 0 · test</string>
+
+    <string name="open">Open</string>
+    <string name="open_other_screen">Open on the other screen</string>
+    <string name="panel_below">Bottom panel</string>
+    <string name="hint_keys">A opens · X opens on the other screen</string>
+    <string name="app_count">App %1$d of %2$d</string>
+    <string name="loading_apps">Loading apps…</string>
+    <string name="no_apps">No apps found</string>
+    <string name="single_screen">Only one screen found. The bottom panel opens on this same screen.</string>
+    <string name="launch_failed">Could not open %1$s on that screen</string>
+
+    <string name="tab_shortcuts">Shortcuts</string>
+    <string name="tab_apps">Apps</string>
+    <string name="tab_screens">Screens</string>
+
+    <string name="sc_android_settings">Android settings</string>
+    <string name="sc_android_settings_desc">Wi-Fi, Bluetooth, apps</string>
+    <string name="sc_default_launcher">Default launcher</string>
+    <string name="sc_default_launcher_desc">Choose what opens with Home</string>
+    <string name="sc_top">Top screen</string>
+    <string name="sc_top_desc">Bring Huginn back up there</string>
+    <string name="sc_reload">Reload apps</string>
+    <string name="sc_reload_desc">After installing or removing one</string>
+    <string name="sc_repo">Project on GitHub</string>
+    <string name="sc_repo_desc">Test builds and notes</string>
+    <string name="version_line">Huginn %1$s · build %2$d</string>
+
+    <string name="open_in">Open on:</string>
+    <string name="target_here">This screen</string>
+    <string name="target_other">Other screen</string>
+
+    <string name="screens_title">Screens found</string>
+    <string name="screen_this">this screen</string>
+    <string name="screen_main">main</string>
+    <string name="screen_off">off</string>
+    <string name="screen_private">private</string>
+    <string name="screen_presentation">presentation</string>
+    <string name="screen_line">%1$d × %2$d px · %3$d dpi · %4$d Hz</string>
+    <string name="device_line">Device: %1$s %2$s · Android %3$s</string>
+    <string name="uptime">Huginn open for %1$s</string>
+    <string name="last_error">Last error: %1$s</string>
+    <string name="refresh">Refresh</string>
+
+    <string name="wifi_on">Wi-Fi</string>
+    <string name="wifi_off">No Wi-Fi</string>
+    <string name="charging">charging</string>
+</resources>
