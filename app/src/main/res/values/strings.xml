@@ -113,4 +113,7 @@
     </plurals>
     <string name="section_launcher">Launcher</string>
     <string name="credits_esde">Systems and emulator rules from ES-DE (MIT licence)</string>
+    <string name="last_launch">Last game launch</string>
+    <string name="copy_report">Copy report</string>
+    <string name="copied">Report copied</string>
 </resources>

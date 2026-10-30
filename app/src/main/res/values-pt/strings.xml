@@ -112,4 +112,7 @@
     </plurals>
     <string name="section_launcher">Launcher</string>
     <string name="credits_esde">Sistemas e regras de emuladores do ES-DE (licença MIT)</string>
+    <string name="last_launch">Última tentativa de abrir um jogo</string>
+    <string name="copy_report">Copiar relatório</string>
+    <string name="copied">Relatório copiado</string>
 </resources>

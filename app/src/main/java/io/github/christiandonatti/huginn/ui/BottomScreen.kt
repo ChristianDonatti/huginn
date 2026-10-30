@@ -78,6 +78,7 @@ import io.github.christiandonatti.huginn.Prefs
 import io.github.christiandonatti.huginn.Rules
 import io.github.christiandonatti.huginn.BuildConfig
 import io.github.christiandonatti.huginn.DualScreen
+import io.github.christiandonatti.huginn.GameLauncher
 import io.github.christiandonatti.huginn.R
 import io.github.christiandonatti.huginn.ScreenInfo
 import io.github.christiandonatti.huginn.shared.formatMinutes
@@ -274,6 +275,15 @@ private fun ScreensTab(activity: Activity) {
                 )
                 DualScreen.lastError?.let {
                     Text(stringResource(R.string.last_error, it), style = MaterialTheme.typography.bodySmall, color = HColors.Accent)
+                }
+                GameLauncher.lastLaunch?.let { report ->
+                    Text(stringResource(R.string.last_launch), style = MaterialTheme.typography.labelSmall, color = HColors.TextMuted, modifier = Modifier.padding(top = 8.dp))
+                    Text(report, style = MaterialTheme.typography.bodySmall, color = HColors.TextSoft)
+                    PillButton(stringResource(R.string.copy_report), primary = false, onClick = {
+                        val cm = context.getSystemService(android.content.ClipboardManager::class.java)
+                        cm?.setPrimaryClip(android.content.ClipData.newPlainText("Huginn", report))
+                        Toast.makeText(context, R.string.copied, Toast.LENGTH_SHORT).show()
+                    })
                 }
             }
         }

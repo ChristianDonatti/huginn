@@ -4,7 +4,14 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.app.AppOpsManager
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Process
+import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import android.os.StrictMode
 import androidx.core.content.FileProvider
 import io.github.christiandonatti.huginn.shared.ExtraType
@@ -60,22 +67,82 @@ object GameLauncher {
     }
 
     /** Starts [game] on the given screen. */
+    /**
+     * What the last attempt to start a game sent to Android, shown in the Screens tab with a copy
+     * button so a failed launch can be reported exactly.
+     */
+    var lastLaunch by mutableStateOf<String?>(null)
+        private set
+
     fun play(context: Context, game: Game, displayId: Int): Result {
-        val intent = try {
-            if (game.packageName != null) {
-                context.packageManager.getLaunchIntentForPackage(game.packageName)
-                    ?: return Result.Failed("no launch activity")
-            } else {
-                val command = choice(context, game).current ?: return Result.NoEmulator(game.system)
-                buildIntent(context, game, command)
-            }
-        } catch (e: Exception) {
-            return Result.Failed("${e.javaClass.simpleName}: ${e.message}")
+        var command: CommandDef? = null
+        val result = run {
+            val intent = try {
+                if (game.packageName != null) {
+                    context.packageManager.getLaunchIntentForPackage(game.packageName)
+                        ?: return@run Result.Failed("no launch activity")
+                } else {
+                    command = choice(context, game).current ?: return@run Result.NoEmulator(game.system)
+                    buildIntent(context, game, command!!)
+                }
+            } catch (e: Exception) {
+                return@run Result.Failed("${e.javaClass.simpleName}: ${e.message}")
+            }.also { lastLaunch = describe(context, game, command, it, displayId, null) }
+            if (!DualScreen.open(context, intent, displayId)) return@run Result.Failed(DualScreen.lastError ?: "")
+            Prefs.played(game.id)
+            Result.Started
         }
-        if (!DualScreen.open(context, intent, displayId)) return Result.Failed(DualScreen.lastError ?: "")
-        Prefs.played(game.id)
-        return Result.Started
+        if (result != Result.Started) {
+            val head = lastLaunch?.takeIf { it.contains(game.title) } ?: describe(context, game, command, null, displayId, null)
+            lastLaunch = head + "\nresult: " + result
+        } else {
+            lastLaunch = lastLaunch + "\nresult: started"
+        }
+        Log.i("Huginn", lastLaunch ?: "")
+        return result
     }
+
+    private fun describe(context: Context, game: Game, command: CommandDef?, intent: Intent?, displayId: Int, note: String?): String {
+        val lines = ArrayList<String>()
+        lines += "game: ${game.title} [${game.system}]"
+        game.path?.let { lines += "file: $it" }
+        command?.let { lines += "command: ${it.label}" }
+        if (intent != null) {
+            lines += "component: ${intent.component?.flattenToShortString()}"
+            intent.action?.let { lines += "action: $it" }
+            intent.categories?.takeIf { it.isNotEmpty() }?.let { lines += "categories: ${it.joinToString()}" }
+            intent.data?.let { lines += "data: $it" }
+            intent.type?.let { lines += "type: $it" }
+            intent.extras?.let { b ->
+                for (key in b.keySet()) {
+                    @Suppress("DEPRECATION")
+                    val v = b.get(key)
+                    lines += "extra $key = " + if (v is Array<*>) v.joinToString(",", "[", "]") else v.toString()
+                }
+            }
+            lines += "flags: 0x" + Integer.toHexString(intent.flags)
+            intent.component?.packageName?.let { pkg ->
+                lines += "emulator all files access: " + allFilesAccess(context, pkg)
+                runCatching { context.packageManager.getPackageInfo(pkg, 0).versionName }.getOrNull()?.let { lines += "emulator version: $it" }
+            }
+        }
+        lines += "display: $displayId"
+        note?.let { lines += it }
+        return lines.joinToString("\n")
+    }
+
+    /** Whether an emulator has "All files access" (yes / no / ? when Android does not say). */
+    private fun allFilesAccess(context: Context, pkg: String): String = runCatching {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return@runCatching "n/a"
+        val uid = context.packageManager.getApplicationInfo(pkg, 0).uid
+        val ops = context.getSystemService(AppOpsManager::class.java)
+        when (ops.unsafeCheckOpNoThrow("android:manage_external_storage", uid, pkg)) {
+            AppOpsManager.MODE_ALLOWED -> "yes"
+            AppOpsManager.MODE_DEFAULT ->
+                if (context.packageManager.checkPermission(android.Manifest.permission.MANAGE_EXTERNAL_STORAGE, pkg) == PackageManager.PERMISSION_GRANTED) "yes" else "no"
+            else -> "no"
+        }
+    }.getOrDefault("?")
 
     private fun buildIntent(context: Context, game: Game, command: CommandDef): Intent {
         val spec = command.spec
