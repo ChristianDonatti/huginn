@@ -65,13 +65,31 @@ object DualScreen {
         else Display.DEFAULT_DISPLAY
     }
 
-    private fun startOn(context: Context, intent: Intent, displayId: Int): Boolean = try {
+    /** When Huginn last opened something itself, so leaving for it is not taken as closing Huginn. */
+    var lastStartAt = 0L
+        private set
+
+    fun markStart() { lastStartAt = SystemClock.elapsedRealtime() }
+
+    private fun startOn(context: Context, intent: Intent, displayId: Int): Boolean = startOrError(context, intent, displayId) == null
+
+    /** Opens [intent] on a screen; returns what went wrong, or null when Android accepted it. */
+    fun startOrError(context: Context, intent: Intent, displayId: Int): Exception? = try {
         val options = ActivityOptions.makeBasic().setLaunchDisplayId(displayId)
+        lastStartAt = SystemClock.elapsedRealtime()
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), options.toBundle())
-        true
+        null
     } catch (e: Exception) {
         lastError = "${e.javaClass.simpleName}: ${e.message}"
-        false
+        e
+    }
+
+    /** Whether Huginn is the launcher Android opens with the Home button. */
+    fun isDefaultHome(context: Context): Boolean {
+        val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        @Suppress("DEPRECATION")
+        val info = context.packageManager.resolveActivity(home, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+        return info?.activityInfo?.packageName == context.packageName
     }
 
     /**

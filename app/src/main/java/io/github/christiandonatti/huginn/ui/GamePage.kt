@@ -55,6 +55,8 @@ import io.github.christiandonatti.huginn.Game
 import io.github.christiandonatti.huginn.GameLauncher
 import io.github.christiandonatti.huginn.Prefs
 import io.github.christiandonatti.huginn.R
+import io.github.christiandonatti.huginn.rememberCover
+import io.github.christiandonatti.huginn.shared.formatMinutes
 import io.github.christiandonatti.huginn.shared.titleTags
 import io.github.christiandonatti.huginn.ui.theme.HColors
 
@@ -99,6 +101,7 @@ fun GamePage(
             titleSize = 22.sp,
             icon = icon,
             corner = 24,
+            cover = rememberCover(game, 720),
             modifier = Modifier.fillMaxHeight(0.92f).width(230.dp),
         )
         Column(
@@ -117,6 +120,7 @@ fun GamePage(
                 game.fileName,
                 formatSize(context, game.size),
                 Prefs.lastPlayed[game.id]?.let { stringResource(R.string.last_played, formatWhen(it)) },
+                Prefs.playMinutes[game.id]?.let { stringResource(R.string.play_time, formatMinutes(it)) },
             )
             Text(facts.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = HColors.TextSoft)
             game.path?.substringBeforeLast('/')?.let {

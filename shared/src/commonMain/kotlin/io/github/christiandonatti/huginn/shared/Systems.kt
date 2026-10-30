@@ -62,23 +62,16 @@ object Systems {
     fun color(system: String): Long =
         colors[system] ?: fallback[(system.hashCode() and Int.MAX_VALUE) % fallback.size]
 
-    /** Systems where Huginn suggests a standalone emulator over RetroArch when both are installed. */
-    private val preferStandalone = setOf(
-        "gc", "wii", "wiiu", "n3ds", "nds", "ps2", "ps3", "psp", "psx", "psvita", "switch",
-        "dreamcast", "saturn", "steam", "windows",
-    )
-
     /**
-     * Which command to use by default: the first installed one in ES-DE's order (its preferred
-     * emulator first), but a standalone emulator first for the heavier systems in [preferStandalone].
+     * Which command to use by default, among the installed ones: a standalone emulator the
+     * person installed first (in ES-DE's order), and RetroArch only when no standalone one is
+     * installed for that system. Someone who installed melonDS or My Boy! wants to use it; a
+     * RetroArch core may not even be downloaded.
      */
     fun defaultCommand(system: String, labels: List<String>, installed: List<Boolean>): Int? {
         val candidates = labels.indices.filter { installed.getOrElse(it) { false } }
         if (candidates.isEmpty()) return null
-        if (system in preferStandalone) {
-            candidates.firstOrNull { labels[it].contains("(Standalone)") }?.let { return it }
-        }
-        return candidates.first()
+        return candidates.firstOrNull { labels[it].contains("(Standalone)") } ?: candidates.first()
     }
 
     /** "RetroArch · mGBA" for RetroArch cores, "melonDS" for "melonDS (Standalone)". */

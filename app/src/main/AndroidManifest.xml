@@ -13,6 +13,12 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
+    <!-- Box art from the libretro thumbnails server. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Closes a RetroArch left in the background so it opens the new game, like Cocoon does. -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+
     <!-- A launcher has to see every app, including emulators without a launcher icon. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 

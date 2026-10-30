@@ -7,6 +7,9 @@ import io.github.christiandonatti.huginn.shared.LaunchSpec
 import io.github.christiandonatti.huginn.shared.Systems
 import io.github.christiandonatti.huginn.shared.parseCommand
 import io.github.christiandonatti.huginn.shared.splitComponent
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
 import org.json.JSONObject
 
 /** One way to start a system's games, e.g. "mGBA" through RetroArch or "My Boy! (Standalone)". */
@@ -99,6 +102,35 @@ object Rules {
     /** Whether a command can run: its emulator is installed (native Android games always can). */
     fun canRun(context: Context, command: CommandDef): Boolean =
         command.spec.androidApp != null || command.spec.emulator?.let { installed(context, it) } != null
+
+    /** An emulator app found on the device. */
+    class InstalledEmulator(val packageName: String, val label: String, val icon: ImageBitmap?, val systems: List<String>)
+
+    /**
+     * Every emulator from the rules that is installed, with the systems it can run, the way Cocoon
+     * lists the players it found. Slow-ish (a package lookup per emulator): call off the main thread.
+     */
+    fun installedEmulators(context: Context): List<InstalledEmulator> {
+        val pm = context.packageManager
+        val systemsByEmu = HashMap<String, MutableSet<String>>()
+        for (system in systems(context).values) {
+            for (c in system.commands) c.spec.emulator?.let { systemsByEmu.getOrPut(it) { LinkedHashSet() } += system.name }
+        }
+        val byPackage = LinkedHashMap<String, MutableSet<String>>()
+        for (name in load(context).second.keys) {
+            val component = installed(context, name) ?: continue
+            byPackage.getOrPut(component.packageName) { LinkedHashSet() } += systemsByEmu[name].orEmpty()
+        }
+        return byPackage.map { (pkg, systems) ->
+            val info = runCatching { pm.getApplicationInfo(pkg, 0) }.getOrNull()
+            InstalledEmulator(
+                packageName = pkg,
+                label = info?.loadLabel(pm)?.toString() ?: pkg,
+                icon = info?.let { runCatching { it.loadIcon(pm).toBitmap(72, 72).asImageBitmap() }.getOrNull() },
+                systems = systems.toList(),
+            )
+        }.sortedBy { it.label.lowercase() }
+    }
 
     private fun isInstalled(pm: PackageManager, pkg: String): Boolean =
         runCatching { pm.getPackageInfo(pkg, 0) }.isSuccess

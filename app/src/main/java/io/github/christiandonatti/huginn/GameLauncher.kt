@@ -4,7 +4,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.app.ActivityManager
 import android.app.AppOpsManager
+import android.content.ClipData
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
@@ -63,43 +65,106 @@ object GameLauncher {
     sealed interface Result {
         data object Started : Result
         data class NoEmulator(val system: String) : Result
+        /** The emulator gets the game through the folder picker and [folder] was never released to Huginn. */
+        data class NeedsFolder(val folder: String) : Result
         data class Failed(val reason: String) : Result
     }
 
-    /** Starts [game] on the given screen. */
-    /**
-     * What the last attempt to start a game sent to Android, shown in the Screens tab with a copy
-     * button so a failed launch can be reported exactly.
-     */
+    /** What the last attempt to start a game sent to Android, for the report in the Screens tab. */
     var lastLaunch by mutableStateOf<String?>(null)
         private set
 
-    fun play(context: Context, game: Game, displayId: Int): Result {
+    /** Game being played, to add up play time when Huginn comes back on that screen. */
+    private var session: Triple<String, Long, Int>? = null
+
+    private class Built(
+        val intent: Intent,
+        /** Document URIs inside a released folder, handed over with read/write permission. */
+        val grants: List<Uri> = emptyList(),
+        /** The released folder, granted as a prefix so .cue/.bin and .m3u games can open their other files. */
+        val tree: Uri? = null,
+        /** The command uses the folder picker URI but no released folder holds the game. */
+        val needsFolder: Boolean = false,
+    )
+
+    /**
+     * Starts [game] on the given screen. With [askFolder], a game whose emulator needs the
+     * folder picker URI first asks to release its folder (once per folder).
+     */
+    fun play(context: Context, game: Game, displayId: Int, askFolder: Boolean = true): Result {
         var command: CommandDef? = null
-        val result = run {
-            val intent = try {
+        var sent: Intent? = null
+        val result: Result = run {
+            val built = try {
                 if (game.packageName != null) {
-                    context.packageManager.getLaunchIntentForPackage(game.packageName)
-                        ?: return@run Result.Failed("no launch activity")
+                    Built(context.packageManager.getLaunchIntentForPackage(game.packageName) ?: return@run Result.Failed("no launch activity"))
                 } else {
                     command = choice(context, game).current ?: return@run Result.NoEmulator(game.system)
                     buildIntent(context, game, command!!)
                 }
             } catch (e: Exception) {
                 return@run Result.Failed("${e.javaClass.simpleName}: ${e.message}")
-            }.also { lastLaunch = describe(context, game, command, it, displayId, null) }
-            if (!DualScreen.open(context, intent, displayId)) return@run Result.Failed(DualScreen.lastError ?: "")
+            }
+            if (built.needsFolder && askFolder) {
+                val folder = folderToRelease(game)
+                if (folder != null && folder !in Prefs.askedFolders) return@run Result.NeedsFolder(folder)
+            }
+            if (command?.spec?.emulator == "RETROARCH") {
+                // Like Cocoon: a RetroArch left in the background would show its menu instead of the new game.
+                built.intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                built.intent.component?.packageName?.let { pkg ->
+                    runCatching { context.getSystemService(ActivityManager::class.java).killBackgroundProcesses(pkg) }
+                }
+            }
+            var error: Exception? = null
+            for (attempt in attempts(built)) {
+                sent = attempt
+                error = DualScreen.startOrError(context, attempt, displayId) ?: break
+            }
+            if (error != null) return@run Result.Failed("${error.javaClass.simpleName}: ${error.message}")
             Prefs.played(game.id)
+            session = Triple(game.id, System.currentTimeMillis(), displayId)
             Result.Started
         }
-        if (result != Result.Started) {
-            val head = lastLaunch?.takeIf { it.contains(game.title) } ?: describe(context, game, command, null, displayId, null)
-            lastLaunch = head + "\nresult: " + result
-        } else {
-            lastLaunch = lastLaunch + "\nresult: started"
-        }
+        lastLaunch = describe(context, game, command, sent, displayId, null) + "\nresult: " + result
         Log.i("Huginn", lastLaunch ?: "")
         return result
+    }
+
+    /** The ROM folder (as added in Settings) that holds a game, to release it in the picker. */
+    private fun folderToRelease(game: Game): String? {
+        val path = game.path ?: return null
+        return Prefs.romRoots.filter { path.startsWith("$it/") }.minByOrNull { it.length } ?: game.romPath
+    }
+
+    /**
+     * The intent with permissions to the game and its folder; if Android refuses to pass the folder
+     * permission, the same intent with the game only; then without permissions (the emulator's own access).
+     */
+    private fun attempts(built: Built): List<Intent> {
+        if (built.grants.isEmpty()) return listOf(built.intent)
+        val rw = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        fun withClip(uris: List<Uri>, flags: Int) = Intent(built.intent).apply {
+            val clip = ClipData.newRawUri("rom", uris.first())
+            uris.drop(1).forEach { clip.addItem(ClipData.Item(it)) }
+            clipData = clip
+            addFlags(flags)
+        }
+        val list = ArrayList<Intent>()
+        if (built.tree != null) list += withClip(built.grants + built.tree, rw or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+        list += withClip(built.grants, rw)
+        list += withClip(built.grants, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        list += Intent(built.intent)
+        return list
+    }
+
+    /** Huginn is back on [displayId]: the game started there is over, add its play time. */
+    fun endSession(displayId: Int) {
+        val (id, start, display) = session ?: return
+        if (display != displayId) return
+        session = null
+        val minutes = ((System.currentTimeMillis() - start) / 60_000L).toInt()
+        if (minutes in 1..720) Prefs.addPlayTime(id, minutes)
     }
 
     private fun describe(context: Context, game: Game, command: CommandDef?, intent: Intent?, displayId: Int, note: String?): String {
@@ -121,6 +186,7 @@ object GameLauncher {
                 }
             }
             lines += "flags: 0x" + Integer.toHexString(intent.flags)
+            intent.clipData?.let { clip -> lines += "granted: " + (0 until clip.itemCount).joinToString { clip.getItemAt(it).uri.toString() } }
             intent.component?.packageName?.let { pkg ->
                 lines += "emulator all files access: " + allFilesAccess(context, pkg)
                 runCatching { context.packageManager.getPackageInfo(pkg, 0).versionName }.getOrNull()?.let { lines += "emulator version: $it" }
@@ -144,13 +210,16 @@ object GameLauncher {
         }
     }.getOrDefault("?")
 
-    private fun buildIntent(context: Context, game: Game, command: CommandDef): Intent {
+    private fun buildIntent(context: Context, game: Game, command: CommandDef): Built {
         val spec = command.spec
         val path = game.path ?: error("game without a file")
         val file = File(path)
         val userId = Process.myUid() / 100_000
         val component: ComponentName? = spec.emulator?.let { Rules.installed(context, it) }
         var grantRead = false
+        val tree = FolderAccess.treeFor(context, path)?.second
+        val grants = ArrayList<Uri>()
+        var needsFolder = false
 
         fun readSmall(f: File): String? =
             if (f.isFile && f.length() <= 4096) runCatching { f.readText().trim() }.getOrNull() else null
@@ -158,7 +227,11 @@ object GameLauncher {
         val resolve: (String) -> String? = { name ->
             when (name) {
                 "ROM", "ROMRAW" -> path
-                "ROMSAF" -> safDocumentUri(path)
+                "ROMSAF" -> {
+                    val inTree = tree?.let { FolderAccess.documentUri(it, path) }
+                    if (inTree != null) grants += inTree else needsFolder = true
+                    inTree?.toString() ?: safDocumentUri(path)
+                }
                 "ROMPROVIDER" -> {
                     grantRead = true
                     FileProvider.getUriForFile(context, "${context.packageName}.files", file).toString()
@@ -184,7 +257,7 @@ object GameLauncher {
             val (pkg, cls) = splitComponent(expand(spec.androidApp!!))
             val launch = if (cls != null) Intent(Intent.ACTION_MAIN).setClassName(pkg, cls)
             else context.packageManager.getLaunchIntentForPackage(pkg) ?: error("$pkg is not installed")
-            return launch
+            return Built(launch)
         }
         intent.component = component ?: error("emulator not installed")
         spec.action?.let { intent.action = it }
@@ -215,6 +288,6 @@ object GameLauncher {
         if (spec.clearTop) intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         if (spec.noHistory) intent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
         if (grantRead) intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        return intent
+        return Built(intent, grants.distinct(), if (grants.isNotEmpty()) tree else null, needsFolder)
     }
 }

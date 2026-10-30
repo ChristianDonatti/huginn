@@ -105,7 +105,7 @@
     <string name="tap_to_change">tap to change</string>
     <string name="library_summary">%1$d games in %2$d consoles · scanned %3$s</string>
     <string name="section_emulators">Emulator per console</string>
-    <string name="emulators_hint">Huginn picks one by itself. Standalone emulators that open games through the Android file picker (Dolphin, melonDS, Azahar, DraStic…) need access to the ROM folder set in their own settings first.</string>
+    <string name="emulators_hint">Huginn uses the standalone emulator you installed and RetroArch only when there is none. Tap to choose another. Release the ROM folder above so emulators can open the games.</string>
     <string name="emulator_none_installed">no emulator installed</string>
     <plurals name="emulators_installed">
         <item quantity="one">%d installed</item>
@@ -116,4 +116,20 @@
     <string name="last_launch">Last game launch</string>
     <string name="copy_report">Copy report</string>
     <string name="copied">Report copied</string>
+    <string name="release_folder_toast">Release the ROM folder once: choose it and tap “Use this folder”. Then emulators open the games straight away.</string>
+    <string name="play_time">%1$s played</string>
+    <string name="section_found">Emulators found</string>
+    <string name="section_covers">Covers</string>
+    <string name="covers_progress">Downloading covers: %1$d of %2$d</string>
+    <string name="covers_done">Last download found %1$d new covers</string>
+    <string name="covers_hint">Box art comes from the libretro thumbnails (the same covers RetroArch shows) and needs Wi-Fi.</string>
+    <string name="covers_now">Download covers</string>
+    <string name="covers_auto_on">Automatic: on</string>
+    <string name="covers_auto_off">Automatic: off</string>
+    <string name="folder_released">released to the emulators</string>
+    <string name="folder_not_released">not released to the emulators yet</string>
+    <string name="release_folder">Release to emulators</string>
+    <string name="remove">Remove</string>
+    <string name="found_loading">Looking for emulators…</string>
+    <string name="found_none">No known emulator installed. Install RetroArch or a standalone emulator.</string>
 </resources>

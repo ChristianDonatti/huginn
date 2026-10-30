@@ -44,7 +44,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.Image
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,7 +62,11 @@ import io.github.christiandonatti.huginn.AppRepository
 import io.github.christiandonatti.huginn.BuildConfig
 import io.github.christiandonatti.huginn.CommandDef
 import io.github.christiandonatti.huginn.DualScreen
+import io.github.christiandonatti.huginn.Covers
+import io.github.christiandonatti.huginn.FolderAccess
 import io.github.christiandonatti.huginn.GameLauncher
+import io.github.christiandonatti.huginn.HuginnActivity
+import io.github.christiandonatti.huginn.Rules
 import io.github.christiandonatti.huginn.Library
 import io.github.christiandonatti.huginn.Prefs
 import io.github.christiandonatti.huginn.R
@@ -158,18 +166,7 @@ fun SettingsTab(activity: Activity) {
                 }
             }
         }
-        items(Prefs.romRoots, key = { it }) { root ->
-            val count = Library.perRoot[root]
-            SettingRow(
-                icon = Icons.Filled.Delete,
-                title = root,
-                subtitle = if (count != null) plural(R.plurals.game_count, count, count) + " · " + stringResource(R.string.tap_to_remove)
-                else stringResource(R.string.tap_to_remove),
-            ) {
-                Prefs.removeRoot(root)
-                Library.refresh(context)
-            }
-        }
+        items(Prefs.romRoots, key = { it }) { root -> RootRow(root, activity) }
         item {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 PillButton(stringResource(R.string.add_folder), primary = false, icon = Icons.Filled.Add, onClick = pick)
@@ -190,6 +187,30 @@ fun SettingsTab(activity: Activity) {
             item { SectionTitle(stringResource(R.string.section_emulators)) }
             item { Text(stringResource(R.string.emulators_hint), style = MaterialTheme.typography.bodySmall, color = HColors.TextMuted) }
             items(systems, key = { "emu-$it" }) { system -> EmulatorRow(system) }
+        }
+
+        item { SectionTitle(stringResource(R.string.section_found)) }
+        item { FoundEmulators() }
+
+        item { SectionTitle(stringResource(R.string.section_covers)) }
+        item {
+            val p = Covers.progress
+            val text = when {
+                p != null -> stringResource(R.string.covers_progress, p.first, p.second)
+                Covers.lastFound != null -> stringResource(R.string.covers_done, Covers.lastFound ?: 0)
+                else -> stringResource(R.string.covers_hint)
+            }
+            Text(text, style = MaterialTheme.typography.bodySmall, color = HColors.TextMuted)
+        }
+        item {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton(stringResource(R.string.covers_now), primary = false, icon = Icons.Filled.Refresh, onClick = { Covers.fetch(context, Library.roms) })
+                PillButton(
+                    stringResource(if (Prefs.downloadCovers) R.string.covers_auto_on else R.string.covers_auto_off),
+                    primary = false,
+                    onClick = { Prefs.setDownloadCovers(!Prefs.downloadCovers) },
+                )
+            }
         }
 
         item { SectionTitle(stringResource(R.string.section_launcher)) }
@@ -226,6 +247,75 @@ fun SettingsTab(activity: Activity) {
                     color = HColors.TextMuted,
                 )
                 Text(stringResource(R.string.credits_esde), style = MaterialTheme.typography.bodySmall, color = HColors.TextMuted)
+            }
+        }
+    }
+}
+
+/** One ROM folder: games found, whether it is released to the emulators, and remove. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RootRow(root: String, activity: Activity) {
+    val context = LocalContext.current
+    val released = remember(root, FolderAccess.version) { runCatching { FolderAccess.isReleased(context, root) }.getOrDefault(false) }
+    val count = Library.perRoot[root]
+    val shape = RoundedCornerShape(14.dp)
+    Column(
+        Modifier.fillMaxWidth().clip(shape).background(HColors.Surface).border(1.dp, HColors.Stroke, shape).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(root, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        val status = stringResource(if (released) R.string.folder_released else R.string.folder_not_released)
+        Text(
+            listOfNotNull(count?.let { plural(R.plurals.game_count, it, it) }, status).joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (released) HColors.Ok else HColors.Accent,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (!released) {
+                PillButton(stringResource(R.string.release_folder), primary = true, onClick = {
+                    (activity as? HuginnActivity)?.pickFolder(root) { Prefs.markFolderAsked(root) }
+                })
+            }
+            PillButton(stringResource(R.string.remove), primary = false, icon = Icons.Filled.Delete, onClick = {
+                Prefs.removeRoot(root)
+                Library.refresh(context)
+            })
+        }
+    }
+}
+
+/** The emulator apps Huginn found, with their icons and the consoles they run. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FoundEmulators() {
+    val context = LocalContext.current
+    val found by produceState<List<Rules.InstalledEmulator>?>(null, AppRepository.version) {
+        value = withContext(Dispatchers.Default) { runCatching { Rules.installedEmulators(context) }.getOrDefault(emptyList()) }
+    }
+    val list = found
+    when {
+        list == null -> Text(stringResource(R.string.found_loading), style = MaterialTheme.typography.bodySmall, color = HColors.TextMuted)
+        list.isEmpty() -> Text(stringResource(R.string.found_none), style = MaterialTheme.typography.bodySmall, color = HColors.Accent)
+        else -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            list.forEach { emu ->
+                val shape = RoundedCornerShape(50)
+                Row(
+                    Modifier.clip(shape).background(HColors.Surface).border(1.dp, HColors.Stroke, shape).padding(start = 6.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    emu.icon?.let { Image(it, contentDescription = null, modifier = Modifier.size(22.dp)) }
+                    Spacer(Modifier.width(6.dp))
+                    Column {
+                        Text(emu.label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                        Text(
+                            emu.systems.take(4).joinToString(", ") { systemShortName(context, it) } + if (emu.systems.size > 4) "…" else "",
+                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified),
+                            color = HColors.TextMuted,
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
         }
     }

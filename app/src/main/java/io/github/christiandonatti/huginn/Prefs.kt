@@ -38,6 +38,18 @@ object Prefs {
     var unmarkedGames by mutableStateOf<Set<String>>(emptySet())
         private set
 
+    /** ROM folders Huginn already asked to release in the folder picker (asked once each). */
+    var askedFolders by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    /** Minutes played per game. */
+    var playMinutes by mutableStateOf<Map<String, Int>>(emptyMap())
+        private set
+
+    /** Download box art from the libretro thumbnails server after each scan. */
+    var downloadCovers by mutableStateOf(true)
+        private set
+
     /** True once Huginn looked for ROM folders by itself, so it does not do it on every start. */
     var autoDetected by mutableStateOf(false)
         private set
@@ -53,6 +65,9 @@ object Prefs {
         markedGames = sp.getStringSet("markedGames", emptySet()).orEmpty().toSet()
         unmarkedGames = sp.getStringSet("unmarkedGames", emptySet()).orEmpty().toSet()
         autoDetected = sp.getBoolean("autoDetected", false)
+        askedFolders = sp.getStringSet("askedFolders", emptySet()).orEmpty().toSet()
+        playMinutes = readMap("playMinutes") { (it as Number).toInt() }
+        downloadCovers = sp.getBoolean("downloadCovers", true)
     }
 
     private fun <T> readMap(key: String, convert: (Any) -> T): Map<String, T> {
@@ -74,6 +89,21 @@ object Prefs {
     fun removeRoot(path: String) {
         romRoots = romRoots - path
         sp.edit().putString("romRoots", romRoots.joinToString("\n")).apply()
+    }
+
+    fun markFolderAsked(folder: String) {
+        askedFolders = askedFolders + folder
+        sp.edit().putStringSet("askedFolders", askedFolders).apply()
+    }
+
+    fun addPlayTime(gameId: String, minutes: Int) {
+        playMinutes = playMinutes + (gameId to (playMinutes[gameId] ?: 0) + minutes)
+        writeMap("playMinutes", playMinutes)
+    }
+
+    fun setDownloadCovers(on: Boolean) {
+        downloadCovers = on
+        sp.edit().putBoolean("downloadCovers", on).apply()
     }
 
     fun markAutoDetected() {

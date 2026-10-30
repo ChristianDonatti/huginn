@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import io.github.christiandonatti.huginn.AppRepository
 import io.github.christiandonatti.huginn.Game
 import io.github.christiandonatti.huginn.GameLauncher
+import io.github.christiandonatti.huginn.HuginnActivity
 import io.github.christiandonatti.huginn.Library
 import io.github.christiandonatti.huginn.Prefs
 import io.github.christiandonatti.huginn.R
@@ -104,10 +106,25 @@ fun formatSize(context: Context, bytes: Long): String? =
 fun formatWhen(time: Long): String =
     DateUtils.getRelativeTimeSpanString(time, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString()
 
-/** Starts a game and explains in a toast when it could not. */
-fun playGame(context: Context, game: Game, displayId: Int) {
-    when (val r = GameLauncher.play(context, game, displayId)) {
+/**
+ * Starts a game and explains in a toast when it could not. When the emulator needs the ROM
+ * folder released to Huginn, opens the folder picker there first (once per folder), then plays.
+ */
+fun playGame(context: Context, game: Game, displayId: Int, askFolder: Boolean = true) {
+    when (val r = GameLauncher.play(context, game, displayId, askFolder)) {
         GameLauncher.Result.Started -> Unit
+        is GameLauncher.Result.NeedsFolder -> {
+            val activity = runCatching { context.findActivity() }.getOrNull() as? HuginnActivity
+            if (activity == null) {
+                playGame(context, game, displayId, askFolder = false)
+            } else {
+                Toast.makeText(context, context.getString(R.string.release_folder_toast), Toast.LENGTH_LONG).show()
+                activity.pickFolder(r.folder) {
+                    Prefs.markFolderAsked(r.folder)
+                    playGame(context, game, displayId, askFolder = false)
+                }
+            }
+        }
         is GameLauncher.Result.NoEmulator -> Toast.makeText(
             context, context.getString(R.string.no_emulator_toast, systemShortName(context, r.system)), Toast.LENGTH_LONG,
         ).show()
@@ -129,6 +146,7 @@ fun GameCover(
     titleSize: TextUnit = 13.sp,
     icon: ImageBitmap? = null,
     corner: Int = 18,
+    cover: ImageBitmap? = null,
 ) {
     val base = Color(Systems.color(game.system))
     Box(
@@ -142,6 +160,16 @@ fun GameCover(
                 ),
             ),
     ) {
+        if (cover != null) {
+            // Box art keeps its own shape (SNES boxes are wide, GBA almost square) over the system colour.
+            Image(
+                cover,
+                contentDescription = game.title,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize().padding(6.dp),
+            )
+            return@Box
+        }
         if (icon != null) {
             Image(icon, contentDescription = null, modifier = Modifier.align(Alignment.Center).size(72.dp))
         } else {

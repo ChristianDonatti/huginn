@@ -128,6 +128,7 @@ object Library {
                 perRoot = counts
                 lastScan = now
             }
+            if (Prefs.downloadCovers) Covers.fetch(context, sorted)
         } finally {
             withContext(Dispatchers.Main) {
                 scanning = false

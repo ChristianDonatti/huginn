@@ -7,8 +7,6 @@ import android.os.Build
 import android.provider.DocumentsContract
 import android.provider.Settings
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import io.github.christiandonatti.huginn.DualScreen
+import io.github.christiandonatti.huginn.HuginnActivity
 import io.github.christiandonatti.huginn.Library
 import io.github.christiandonatti.huginn.Prefs
 import io.github.christiandonatti.huginn.R
@@ -71,21 +70,26 @@ fun requestStorageAccess(activity: Activity) {
     }
 }
 
-/** Android's folder picker; the chosen folder becomes a ROM folder and is scanned. */
+/**
+ * Android's folder picker; the chosen folder becomes a ROM folder, is scanned, and stays
+ * released to Huginn so emulators can be handed its games.
+ */
 @Composable
 fun rememberFolderPicker(): () -> Unit {
     val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        val path = runCatching { pathFromDocumentId(DocumentsContract.getTreeDocumentId(uri)) }.getOrNull()
-        if (path == null) {
-            Toast.makeText(context, R.string.folder_unsupported, Toast.LENGTH_LONG).show()
-        } else {
-            Prefs.addRoot(path)
-            Library.refresh(context)
+    return remember(context) {
+        {
+            val activity = runCatching { context.findActivity() }.getOrNull() as? HuginnActivity
+            activity?.pickFolder(null) { path ->
+                if (path != null) {
+                    Prefs.addRoot(path)
+                    Prefs.markFolderAsked(path)
+                    Library.refresh(context)
+                }
+            }
+            Unit
         }
     }
-    return { runCatching { launcher.launch(null) } }
 }
 
 fun autoDetectFolders(context: android.content.Context) {

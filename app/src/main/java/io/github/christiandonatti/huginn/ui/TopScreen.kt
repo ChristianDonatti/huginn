@@ -73,6 +73,7 @@ import io.github.christiandonatti.huginn.GameLauncher
 import io.github.christiandonatti.huginn.Library
 import io.github.christiandonatti.huginn.Prefs
 import io.github.christiandonatti.huginn.R
+import io.github.christiandonatti.huginn.rememberCover
 import io.github.christiandonatti.huginn.ui.theme.HColors
 import io.github.christiandonatti.huginn.ui.theme.Unbounded
 
@@ -347,6 +348,7 @@ private fun GameCarousel(
                 systemLabel = labels[game.system] ?: game.system,
                 titleSize = if (isSelected) 15.sp else 12.sp,
                 icon = icons[game.packageName]?.icon,
+                cover = rememberCover(game, 360),
                 modifier = Modifier
                     .width(width)
                     .height(width * 4 / 3)

@@ -104,7 +104,7 @@
     <string name="tap_to_change">toque para trocar</string>
     <string name="library_summary">%1$d jogos em %2$d consoles · escaneado %3$s</string>
     <string name="section_emulators">Emulador por console</string>
-    <string name="emulators_hint">O Huginn escolhe um sozinho. Emuladores próprios que abrem jogos pelo seletor de arquivos do Android (Dolphin, melonDS, Azahar, DraStic…) precisam ter acesso à pasta de ROMs nos ajustes deles antes.</string>
+    <string name="emulators_hint">O Huginn usa o emulador próprio que você instalou e o RetroArch só quando não houver um. Toque para escolher outro. Libere a pasta de ROMs acima para os emuladores conseguirem abrir os jogos.</string>
     <string name="emulator_none_installed">nenhum emulador instalado</string>
     <plurals name="emulators_installed">
         <item quantity="one">%d instalado</item>
@@ -115,4 +115,20 @@
     <string name="last_launch">Última tentativa de abrir um jogo</string>
     <string name="copy_report">Copiar relatório</string>
     <string name="copied">Relatório copiado</string>
+    <string name="release_folder_toast">Libere a pasta de ROMs uma vez: escolha a pasta e toque em “Usar esta pasta”. Depois os emuladores abrem os jogos direto.</string>
+    <string name="play_time">%1$s jogados</string>
+    <string name="section_found">Emuladores encontrados</string>
+    <string name="section_covers">Capas</string>
+    <string name="covers_progress">Baixando capas: %1$d de %2$d</string>
+    <string name="covers_done">A última busca achou %1$d capas novas</string>
+    <string name="covers_hint">As capas vêm do libretro thumbnails (as mesmas que o RetroArch mostra) e precisam de Wi-Fi.</string>
+    <string name="covers_now">Baixar capas</string>
+    <string name="covers_auto_on">Automático: ligado</string>
+    <string name="covers_auto_off">Automático: desligado</string>
+    <string name="folder_released">liberada para os emuladores</string>
+    <string name="folder_not_released">ainda não liberada para os emuladores</string>
+    <string name="release_folder">Liberar para emuladores</string>
+    <string name="remove">Remover</string>
+    <string name="found_loading">Procurando emuladores…</string>
+    <string name="found_none">Nenhum emulador conhecido instalado. Instale o RetroArch ou um emulador próprio.</string>
 </resources>
