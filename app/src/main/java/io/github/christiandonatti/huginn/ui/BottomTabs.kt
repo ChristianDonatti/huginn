@@ -208,7 +208,7 @@ fun SettingsTab(activity: Activity) {
                 PillButton(
                     stringResource(if (Prefs.downloadCovers) R.string.covers_auto_on else R.string.covers_auto_off),
                     primary = false,
-                    onClick = { Prefs.setDownloadCovers(!Prefs.downloadCovers) },
+                    onClick = { Prefs.toggleDownloadCovers(!Prefs.downloadCovers) },
                 )
             }
         }

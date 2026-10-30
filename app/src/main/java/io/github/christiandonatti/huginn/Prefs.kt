@@ -101,7 +101,7 @@ object Prefs {
         writeMap("playMinutes", playMinutes)
     }
 
-    fun setDownloadCovers(on: Boolean) {
+    fun toggleDownloadCovers(on: Boolean) {
         downloadCovers = on
         sp.edit().putBoolean("downloadCovers", on).apply()
     }
